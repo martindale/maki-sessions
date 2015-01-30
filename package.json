@@ -1,6 +1,6 @@
 {
   "name": "maki-sessions",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "sessions for maki",
   "main": "index.js",
   "scripts": {
