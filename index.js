@@ -8,6 +8,9 @@ var connectRedis = require('connect-redis');
 var session = require('express-session');
 var cookieParser = require('cookie-parser');
 
+var flash = require('connect-flash');
+var async = require('async');
+
 function Sessions( config ) {
   var self = this;
   
@@ -25,9 +28,19 @@ function Sessions( config ) {
     services: {
       http: {
         middleware: function(req, res, next) {
-          // set a user context (from passport)
-          res.locals.user = req.user;
-          return next();
+          var stack = [];
+          if (!req.session.hash) {
+            stack.push(function(done) {
+              req.session.hash = require('crypto').createHash('sha256').update( req.session.id ).digest('hex');
+              req.session.save( done );
+            });
+          }
+          async.series( stack , function(err, results) {
+            // set a user context (from passport)
+            res.locals.user = req.user;
+            res.locals.session = req.session;
+            return next();
+          });
         },
         setup: function( maki ) {
           maki.passport = passport;
@@ -51,7 +64,21 @@ function Sessions( config ) {
           /* Configure the registration and login system */
           maki.app.use( maki.passport.initialize() );
           maki.app.use( maki.passport.session() );
-          //maki.app.use( require('connect-flash')() );
+          maki.app.use( flash() );
+          maki.app.use(function(req, res, next) {
+            res.format({
+              html: function() {
+                res.locals.messages = {
+                  info: req.flash('info'),
+                  warning: req.flash('warning'),
+                  error: req.flash('error'),
+                  success: req.flash('success'),
+                };
+              }
+            });
+            next();
+
+          });
   
           maki.passport.use( new LocalStrategy( verifyUser ) );
           function verifyUser( username , password , done ) {
@@ -87,8 +114,15 @@ function Sessions( config ) {
           });
           maki.app.post('/sessions', maki.passport.authenticate('local') , function(req, res, next) {
             console.log('created session.', req.user._id );
+            req.flash('success', 'logged in');
             return res.redirect('/');
           });
+          maki.app.delete('/sessions/:sessionID', function(req, res, next) {
+            req.logout();
+            req.flash('success', 'logged out');
+            res.redirect('/');
+          });
+          
           maki.passport.serializeUser(function(user, done) {
             done( null , user._id );
           });
