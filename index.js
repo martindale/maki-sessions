@@ -96,14 +96,14 @@ function Sessions( config ) {
             });
           }
           
-          maki.resources[ self.config.resource ].pre('create', function(done) {
+          var plugin = self;
+          maki.resources[ self.config.resource ].pre('create', function( next , done ) {
             var self = this;
-            maki.resources[ self.config.resource ].Model.register({
+            console.log('pre-create plugin ' , plugin.config );
+            maki.resources[ plugin.config.resource ].Model.register({
               email: self.email,
               username: self.username
-            }, self.password , function(err, user) {
-              done();
-            });
+            }, self.password , done );
           });
           
           maki.app.get('/register', function(req, res, next) {
