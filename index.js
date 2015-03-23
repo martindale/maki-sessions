@@ -8,8 +8,9 @@ var flash = require('connect-flash');
 var async = require('async');
 
 function Sessions( config ) {
+  if (!config) var config = {};
+  
   var self = this;
-  if (!config) config = {};
   self.config = config;
 
   self.extends = {
